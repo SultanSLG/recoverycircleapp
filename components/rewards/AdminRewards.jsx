@@ -17,31 +17,42 @@ const TH = ({ children }) => (
 );
 
 export default function AdminRewards() {
-  const [rewards,   setRewards]   = useState([]);
-  const [guides,    setGuides]    = useState([]);
-  const [loading,   setLoading]   = useState(true);
-  const [modal,     setModal]     = useState(false);
-  const [saving,    setSaving]    = useState(false);
-  const [error,     setError]     = useState("");
-  const [success,   setSuccess]   = useState(false);
-  const [form,      setForm]      = useState({ receiver_id: "", amount: "", reason: "" });
+  const [rewards,       setRewards]       = useState([]);
+  const [guides,        setGuides]        = useState([]);
+  const [members,       setMembers]       = useState([]);
+  const [loading,       setLoading]       = useState(true);
+  const [modal,         setModal]         = useState(false);
+  const [saving,        setSaving]        = useState(false);
+  const [error,         setError]         = useState("");
+  const [success,       setSuccess]       = useState(false);
+  const [recipientType, setRecipientType] = useState("guide"); // "guide" | "user"
+  const [form,          setForm]          = useState({ receiver_id: "", amount: "", reason: "" });
   const { toasts, toast, dismiss } = useToast();
 
   const load = useCallback(async () => {
     setLoading(true);
-    const [rRes, gRes] = await Promise.all([
+    const [rRes, gRes, uRes] = await Promise.all([
       fetch("/api/admin/rewards"),
       fetch("/api/admin/users?role=guide"),
+      fetch("/api/admin/users?role=user"),
     ]);
     setRewards(await rRes.json());
     setGuides(await gRes.json());
+    setMembers(await uRes.json());
     setLoading(false);
   }, []);
   useEffect(() => { load(); }, [load]);
 
   function openModal() {
     setForm({ receiver_id: "", amount: "", reason: "" });
+    setRecipientType("guide");
     setError(""); setSuccess(false); setModal(true);
+  }
+
+  function handleTypeSwitch(type) {
+    setRecipientType(type);
+    setForm(f => ({ ...f, receiver_id: "" }));
+    setError("");
   }
 
   async function handleSubmit() {
@@ -53,7 +64,8 @@ export default function AdminRewards() {
     });
     const data = await res.json();
     if (!res.ok) { setError(data.error); setSaving(false); return; }
-    const recipientName = guides.find(g => g.id === form.receiver_id)?.full_name ?? "Guide";
+    const pool = recipientType === "guide" ? guides : members;
+    const recipientName = pool.find(g => g.id === form.receiver_id)?.full_name ?? "Recipient";
     setSaving(false); setSuccess(true);
     setTimeout(() => {
       setModal(false); setSuccess(false); load();
@@ -138,15 +150,54 @@ export default function AdminRewards() {
           </div>
         ) : (
           <div className="space-y-4">
-            <Select label="Recipient (Guide)" required value={form.receiver_id}
-              onChange={e => setForm({ ...form, receiver_id: e.target.value })}>
-              <option value="">— Select a guide —</option>
-              {guides.map(g => (
-                <option key={g.id} value={g.id}>
-                  {g.full_name ?? g.email} ({g.karma_coins ?? 0} KC)
-                </option>
+
+            {/* Recipient type toggle */}
+            <div className="flex rounded-xl overflow-hidden" style={{ border: "1px solid var(--border)" }}>
+              {[
+                { value: "guide",  label: "Guide"  },
+                { value: "user",   label: "Member" },
+              ].map(opt => (
+                <button
+                  key={opt.value}
+                  onClick={() => handleTypeSwitch(opt.value)}
+                  className="flex-1 py-2 text-sm font-medium transition-colors"
+                  style={{
+                    backgroundColor: recipientType === opt.value ? "var(--blue)"    : "var(--card)",
+                    color:           recipientType === opt.value ? "#fff"           : "var(--text-3)",
+                    borderRight:     opt.value === "guide" ? "1px solid var(--border)" : "none",
+                  }}
+                >
+                  {opt.label}
+                </button>
               ))}
-            </Select>
+            </div>
+
+            {/* Guide dropdown */}
+            {recipientType === "guide" && (
+              <Select label="Select Guide" required value={form.receiver_id}
+                onChange={e => setForm({ ...form, receiver_id: e.target.value })}>
+                <option value="">— Choose a guide —</option>
+                {guides.map(g => (
+                  <option key={g.id} value={g.id}>
+                    {g.full_name ?? g.email} ({g.karma_coins ?? 0} KC)
+                  </option>
+                ))}
+              </Select>
+            )}
+
+            {/* Member dropdown */}
+            {recipientType === "user" && (
+              <Select label="Select Member" required value={form.receiver_id}
+                onChange={e => setForm({ ...form, receiver_id: e.target.value })}>
+                <option value="">— Choose a member —</option>
+                {members.map(u => (
+                  <option key={u.id} value={u.id}>
+                    {u.full_name ?? u.email} ({u.karma_coins ?? 0} KC)
+                  </option>
+                ))}
+              </Select>
+            )}
+
             <Input label="Amount (KarmaCoins)" required type="number" min="1"
               value={form.amount} onChange={e => setForm({ ...form, amount: e.target.value })} placeholder="10" />
             <Input label="Reason (optional)" value={form.reason}
