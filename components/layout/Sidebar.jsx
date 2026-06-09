@@ -10,7 +10,7 @@ import {
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 
-const NAV = {
+const NAV = {   
   superadmin: [
     { href: "/superadmin/users",     icon: Users,        label: "Users" },
     { href: "/superadmin/store",     icon: ShoppingBag,  label: "Store" },
