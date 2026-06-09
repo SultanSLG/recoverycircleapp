@@ -40,6 +40,13 @@ const ROLE_LABEL = {
   user: "Member",
 };
 
+const ROLE_HOME = {
+  superadmin: "/superadmin",
+  admin: "/admin",
+  guide: "/guide",
+  user: "/user",
+};
+
 export default function Sidebar({ role }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -59,9 +66,10 @@ export default function Sidebar({ role }) {
         borderRight: "1px solid var(--border)",
       }}
     >
-      {/* Logo */}
-      <div
-        className="flex h-14 items-center gap-3 px-5"
+      {/* Logo — click to go to dashboard */}
+      <Link
+        href={ROLE_HOME[role] ?? "/user"}
+        className="flex h-14 items-center gap-3 px-5 transition-opacity hover:opacity-80"
         style={{ borderBottom: "1px solid var(--border-sub)" }}
       >
         <div
@@ -78,7 +86,7 @@ export default function Sidebar({ role }) {
             {ROLE_LABEL[role] ?? "Member"}
           </p>
         </div>
-      </div>
+      </Link>
 
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto p-3 space-y-0.5">
